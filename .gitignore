@@ -22,6 +22,7 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Android
+android/app/libs/
 android/.gradle/
 android/local.properties
 android/**/build/

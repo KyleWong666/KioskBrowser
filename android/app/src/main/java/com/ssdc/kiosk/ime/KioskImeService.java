@@ -10,6 +10,10 @@ import android.widget.FrameLayout;
 
 import com.ssdc.kiosk.KioskApp;
 import com.ssdc.kiosk.KioskConfig;
+import com.ssdc.kiosk.voice.VoiceInputController;
+
+import java.io.FileWriter;
+import java.util.List;
 
 /**
  * Kiosk 系统输入法：键盘视图与拼音引擎原样复用，
@@ -47,9 +51,49 @@ public class KioskImeService extends InputMethodService {
         new Thread(() -> {
             PinyinEngine eng = PinyinEngine.get(this);
             eng.configure(this, c.vocabularies, c.customVocabulary);
+            if (c.speechEnabled) writeHotwordsFile(eng.boostWords());
             keyboard.post(() -> keyboard.setEngine(eng));
         }).start();
+
+        // 语音输入（sherpa-onnx 本地离线，按住 🎤 说话）
+        if (cfg.speechEnabled) initVoice(cfg);
         return keyboard;
+    }
+
+    private VoiceInputController voice;
+
+    private void initVoice(KioskConfig cfg) {
+        String modelDir = KioskConfig.DIR + "/models/" + cfg.speechModelSize;
+        voice = new VoiceInputController(modelDir,
+                KioskConfig.DIR + "/hotwords.txt", cfg.hotwordsScore,
+                new VoiceInputController.Listener() {
+                    @Override public void onStatus(String status) {
+                        keyboard.post(() -> keyboard.setVoiceStatus(status));
+                    }
+                    @Override public void onResult(String text) {
+                        keyboard.post(() -> {
+                            keyboard.setVoiceStatus(text.isEmpty() ? "未识别到语音，请再试" : "");
+                            if (!text.isEmpty()) commit(text);
+                        });
+                    }
+                });
+        voice.initAsync();
+        keyboard.setVoiceListener(new KeyboardView.VoiceListener() {
+            @Override public void onVoiceStart() { voice.startListening(); }
+            @Override public void onVoiceStop() { voice.stopListening(); }
+        });
+    }
+
+    /** 热词 = 领域词库 + 自定义词库（与 Windows 版 HotwordManager 一致）。 */
+    private void writeHotwordsFile(List<String> words) {
+        try {
+            FileWriter w = new FileWriter(KioskConfig.DIR + "/hotwords.txt");
+            for (String word : words) w.write(word + "\n");
+            w.close();
+            Log.i(KioskApp.TAG, "hotwords written: " + words.size());
+        } catch (Exception e) {
+            Log.w(KioskApp.TAG, "hotwords write failed: " + e.getMessage());
+        }
     }
 
     @Override

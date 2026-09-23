@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 32
     buildToolsVersion "29.0.3"
+    ndkVersion "23.1.7779620"   // AGP 4.0.1 默认要 21.x，本机只有 23.1（含原生 .so 后需 strip）
 
     defaultConfig {
         applicationId "com.ssdc.kiosk"
@@ -10,6 +11,7 @@ android {
         targetSdkVersion 29   // 29 + requestLegacyExternalStorage → /sdcard/kiosk/ 直接可读写
         versionCode 1
         versionName "1.0.0"
+        ndk { abiFilters "arm64-v8a", "armeabi-v7a" }  // kiosk 板全 ARM，去掉 x86 减包
     }
 
     // 发布签名（keystore 不入库，首次构建用 keytool 生成，见 docs/android-deploy.md）
@@ -47,4 +49,6 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation files('libs/sherpa-onnx-1.13.8.aar')   // 语音输入（下载见 docs/android-deploy.md）
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'  // sherpa-onnx AAR 依赖
 }

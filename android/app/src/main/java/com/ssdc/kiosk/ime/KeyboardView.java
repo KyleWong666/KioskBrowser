@@ -25,6 +25,15 @@ public class KeyboardView extends LinearLayout {
         void onHide();
     }
 
+    /** 语音按键（按住说话）。 */
+    public interface VoiceListener {
+        void onVoiceStart();
+        void onVoiceStop();
+    }
+
+    private VoiceListener voiceListener;
+    public void setVoiceListener(VoiceListener l) { voiceListener = l; }
+
     private static final int BG = Color.rgb(30, 32, 40);
     private static final int KEY_BG = Color.rgb(58, 62, 76);
     private static final int KEY_FG = Color.rgb(230, 232, 240);
@@ -97,6 +106,25 @@ public class KeyboardView extends LinearLayout {
         else buildAlphaRows();
     }
 
+    private void addBottomRow(LinearLayout host) {
+        addKeyRow(host,
+                fnKey(symbols ? "abc" : "123", 1.5f, v -> { symbols = !symbols; rebuildKeys(); }),
+                fnKey(chineseAllowed ? (chinese ? "中文" : "EN") : "EN", 1.5f, v -> {
+                    if (!chineseAllowed) return;
+                    chinese = !chinese;
+                    clearComposition();
+                    rebuildKeys();
+                }),
+                textKey("空格", 4f),
+                textKey("，", 1f), textKey("。", 1f),
+                fnKey("⇥", 1.5f, v -> listener.onFocusNext()),
+                fnKey("↵", 1.5f, v -> enter()),
+                holdKey("🎤", 1f,
+                        () -> { if (voiceListener != null) voiceListener.onVoiceStart(); },
+                        () -> { if (voiceListener != null) voiceListener.onVoiceStop(); }),
+                fnKey("▼", 1f, v -> listener.onHide()));
+    }
+
     private void buildAlphaRows() {
         boolean up = shift && !chinese;
         addKeyRow(keysHost, row("1","2","3","4","5","6","7","8","9","0"));
@@ -109,19 +137,7 @@ public class KeyboardView extends LinearLayout {
                 keys(letter("z",up),letter("x",up),letter("c",up),letter("v",up),letter("b",up),
                         letter("n",up),letter("m",up)),
                 repeatKey("⌫", 1.5f, this::backspace));
-        addKeyRow(keysHost,
-                fnKey("123", 1.5f, v -> { symbols = true; rebuildKeys(); }),
-                fnKey(chineseAllowed ? (chinese ? "中文" : "EN") : "EN", 1.5f, v -> {
-                    if (!chineseAllowed) return;
-                    chinese = !chinese;
-                    clearComposition();
-                    rebuildKeys();
-                }),
-                textKey("空格", 5f),
-                textKey("，", 1f), textKey("。", 1f),
-                fnKey("⇥", 1.5f, v -> listener.onFocusNext()),
-                fnKey("↵", 1.5f, v -> enter()),
-                fnKey("▼", 1f, v -> listener.onHide()));
+        addBottomRow(keysHost);
     }
 
     private void buildSymbolRows() {
@@ -131,19 +147,7 @@ public class KeyboardView extends LinearLayout {
         addKeyRow(keysHost,
                 keys("￥","…","、","「","」","『","』","【","】"),
                 repeatKey("⌫", 1.5f, this::backspace));
-        addKeyRow(keysHost,
-                fnKey("abc", 1.5f, v -> { symbols = false; rebuildKeys(); }),
-                fnKey(chineseAllowed ? (chinese ? "中文" : "EN") : "EN", 1.5f, v -> {
-                    if (!chineseAllowed) return;
-                    chinese = !chinese;
-                    clearComposition();
-                    rebuildKeys();
-                }),
-                textKey("空格", 5f),
-                textKey("，", 1f), textKey("。", 1f),
-                fnKey("⇥", 1.5f, v -> listener.onFocusNext()),
-                fnKey("↵", 1.5f, v -> enter()),
-                fnKey("▼", 1f, v -> listener.onHide()));
+        addBottomRow(keysHost);
     }
 
     // ---------------- 按键行为 ----------------
@@ -270,7 +274,30 @@ public class KeyboardView extends LinearLayout {
         return b;
     }
 
-    /** 按住连发键（退格用）：400ms 后每 50ms 触发一次。 */
+    /** 按住触发、松开结束的功能键（语音麦克风）。 */
+    private Button holdKey(String label, float weight, Runnable onDown, Runnable onUp) {
+        Button b = makeButton(label, true);
+        b.setOnTouchListener((v, ev) -> {
+            int a = ev.getAction();
+            if (a == android.view.MotionEvent.ACTION_DOWN) onDown.run();
+            else if (a == android.view.MotionEvent.ACTION_UP
+                    || a == android.view.MotionEvent.ACTION_CANCEL) onUp.run();
+            return true;
+        });
+        b.setLayoutParams(keyLp(weight));
+        return b;
+    }
+
+    /** 语音状态条（复用候选栏区域显示）。 */
+    public void setVoiceStatus(String status) {
+        if (status == null || status.isEmpty()) {
+            if (composition.isEmpty()) candBar.setVisibility(GONE);
+            return;
+        }
+        candBar.setVisibility(VISIBLE);
+        compositionView.setText(status);
+        candButtons.removeAllViews();
+    }
     private Button repeatKey(String label, float weight, Runnable action) {
         Button b = makeButton(label, true);
         final android.os.Handler h = new android.os.Handler();

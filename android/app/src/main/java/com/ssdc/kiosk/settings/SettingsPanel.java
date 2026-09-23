@@ -43,6 +43,7 @@ public class SettingsPanel extends FrameLayout {
             {"retail", "商场"}, {"industrial", "工业"}};
     private EditText editCustom;
     private CheckBox chkAutoLogin;
+    private CheckBox chkSpeech;
     private EditText editLoginUser, editLoginPass, editUserSel, editPassSel, editSubmitSel;
     private TextView msgView;
     private Button btnExit;
@@ -143,6 +144,11 @@ public class SettingsPanel extends FrameLayout {
         editSubmitSel = addEdit(card, "提交按钮选择器", cfg.submitSelector);
         card.addView(space(8));
 
+        // ---------------- 语音输入 ----------------
+        card.addView(label("—— 语音输入（本地离线 sherpa-onnx） ——"));
+        chkSpeech = addCheck(card, "启用语音输入（需 models/zh2025 模型）", cfg.speechEnabled);
+        card.addView(space(8));
+
         msgView = new TextView(getContext());
         msgView.setTextColor(Color.rgb(240, 173, 78));
         card.addView(msgView);
@@ -179,6 +185,7 @@ public class SettingsPanel extends FrameLayout {
         cfg.usernameSelector = editUserSel.getText().toString().trim();
         cfg.passwordSelector = editPassSel.getText().toString().trim();
         cfg.submitSelector = editSubmitSel.getText().toString().trim();
+        cfg.speechEnabled = chkSpeech.isChecked();
         cfg.vocabularies.clear();
         for (CheckBox cb : vocabChecks)
             if (cb.isChecked()) cfg.vocabularies.add((String) cb.getTag());

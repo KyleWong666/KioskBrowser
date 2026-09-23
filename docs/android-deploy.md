@@ -88,6 +88,18 @@ adb -s <设备> shell dpm remove-active-admin --user current com.ssdc.kiosk/.adm
 | 清 WebView 登录态 | `adb shell pm clear com.ssdc.kiosk`（会连配置数据一起清，谨慎） |
 | 查日志 | `adb logcat -s KioskBrowser:I` |
 
+## 语音输入（可选）
+
+```bash
+# 推模型（160MB，一次）——直接复用 Windows 版已下载的 zh2025 模型：
+adb -s <设备> shell mkdir -p /sdcard/kiosk/models/zh2025
+adb -s <设备> push "%LOCALAPPDATA%\KioskBrowser\models\zh2025\encoder.int8.onnx"   "%LOCALAPPDATA%\KioskBrowser\models\zh2025\decoder.onnx"   "%LOCALAPPDATA%\KioskBrowser\models\zh2025\joiner.int8.onnx"   "%LOCALAPPDATA%\KioskBrowser\models\zh2025	okens.txt" /sdcard/kiosk/models/zh2025/
+adb -s <设备> shell pm grant com.ssdc.kiosk android.permission.RECORD_AUDIO
+```
+config `speech.enabled=true`（或设置面板勾选）→ 键盘底排出现 🎤，**按住说话松手上屏**。
+热词 = 领域词库+自定义词库（自动生成 hotwords.txt，modified_beam_search）。
+注意：RK3568 上 160MB 模型首次加载约 60s（状态条提示进度）；需设备有麦克风。
+
 ## 已知事项
 
 - 已默认允许明文 HTTP（`usesCleartextTraffic=true`，内网平台必需；Android 9+ 默认禁止）。

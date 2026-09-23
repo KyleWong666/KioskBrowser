@@ -50,6 +50,11 @@ public class KioskConfig {
     public String autoLoginUser = "";      // TODO 二期: 凭据加密（对齐 Windows AES-256-GCM）
     public String autoLoginPass = "";
 
+    // 语音输入（sherpa-onnx 本地离线）
+    public boolean speechEnabled = false;
+    public String speechModelSize = "zh2025";   // models/{size}/ 目录
+    public float hotwordsScore = 1.5f;
+
     public static KioskConfig load() {
         KioskConfig cfg = new KioskConfig();
         try {
@@ -111,6 +116,12 @@ public class KioskConfig {
                     cfg.autoLoginPass = cred.optString("password", cfg.autoLoginPass);
                 }
             }
+            JSONObject sp = j.optJSONObject("speech");
+            if (sp != null) {
+                cfg.speechEnabled = sp.optBoolean("enabled", cfg.speechEnabled);
+                cfg.speechModelSize = sp.optString("modelSize", cfg.speechModelSize);
+                cfg.hotwordsScore = (float) sp.optDouble("hotwordsScore", cfg.hotwordsScore);
+            }
         } catch (Exception e) {
             Log.e(KioskApp.TAG, "config load failed, using defaults: " + e.getMessage());
         }
@@ -149,12 +160,17 @@ public class KioskConfig {
             cred.put("username", autoLoginUser);
             cred.put("password", autoLoginPass);
             al.put("credentials", cred);
+            JSONObject sp = new JSONObject();
+            sp.put("enabled", speechEnabled);
+            sp.put("modelSize", speechModelSize);
+            sp.put("hotwordsScore", hotwordsScore);
             JSONObject j = new JSONObject();
             j.put("version", "1.0");
             j.put("browser", browser);
             j.put("settingsEntry", zone);
             j.put("keyboard", kb);
             j.put("autoLogin", al);
+            j.put("speech", sp);
             j.put("devMode", devMode);
             FileWriter w = new FileWriter(PATH);
             w.write(j.toString(2));

@@ -15,7 +15,11 @@ adb -s %DEV% install -r "%~dp0app\build\outputs\apk\release\app-release.apk" || 
 echo == 授权存储 ==
 adb -s %DEV% shell pm grant com.ssdc.kiosk android.permission.WRITE_EXTERNAL_STORAGE
 adb -s %DEV% shell pm grant com.ssdc.kiosk android.permission.READ_EXTERNAL_STORAGE
+adb -s %DEV% shell pm grant com.ssdc.kiosk android.permission.RECORD_AUDIO
 adb -s %DEV% shell mkdir -p /sdcard/kiosk
+REM 语音模型（可选，160MB，从 PC 推送一次）:
+REM   adb -s %DEV% shell mkdir -p /sdcard/kiosk/models/zh2025
+REM   adb -s %DEV% push "%LOCALAPPDATA%\KioskBrowser\models\zh2025\" /sdcard/kiosk/models/zh2025/
 
 echo == 设为默认输入法 ==
 adb -s %DEV% shell ime enable com.ssdc.kiosk/.ime.KioskImeService
