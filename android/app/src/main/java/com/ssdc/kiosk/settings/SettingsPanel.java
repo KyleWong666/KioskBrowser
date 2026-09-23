@@ -42,6 +42,8 @@ public class SettingsPanel extends FrameLayout {
             {"general", "通用"}, {"gov", "政务"}, {"medical", "医疗"},
             {"retail", "商场"}, {"industrial", "工业"}};
     private EditText editCustom;
+    private CheckBox chkAutoLogin;
+    private EditText editLoginUser, editLoginPass, editUserSel, editPassSel, editSubmitSel;
     private TextView msgView;
     private Button btnExit;
     private long exitArmAt = 0;
@@ -131,6 +133,16 @@ public class SettingsPanel extends FrameLayout {
         card.addView(editCustom);
         card.addView(space(12));
 
+        // ---------------- 模拟登录 ----------------
+        card.addView(label("—— 模拟登录（小厂软件兜底） ——"));
+        chkAutoLogin = addCheck(card, "启用模拟登录", cfg.autoLoginEnabled);
+        editLoginUser = addEdit(card, "登录用户名", cfg.autoLoginUser);
+        editLoginPass = addEdit(card, "登录密码", cfg.autoLoginPass);
+        editUserSel = addEdit(card, "用户名选择器", cfg.usernameSelector);
+        editPassSel = addEdit(card, "密码选择器", cfg.passwordSelector);
+        editSubmitSel = addEdit(card, "提交按钮选择器", cfg.submitSelector);
+        card.addView(space(8));
+
         msgView = new TextView(getContext());
         msgView.setTextColor(Color.rgb(240, 173, 78));
         card.addView(msgView);
@@ -161,6 +173,12 @@ public class SettingsPanel extends FrameLayout {
         cfg.kioskMode = chkKiosk.isChecked();
         cfg.enableChinese = chkChinese.isChecked();
         cfg.customVocabulary = editCustom.getText().toString();
+        cfg.autoLoginEnabled = chkAutoLogin.isChecked();
+        cfg.autoLoginUser = editLoginUser.getText().toString().trim();
+        cfg.autoLoginPass = editLoginPass.getText().toString();
+        cfg.usernameSelector = editUserSel.getText().toString().trim();
+        cfg.passwordSelector = editPassSel.getText().toString().trim();
+        cfg.submitSelector = editSubmitSel.getText().toString().trim();
         cfg.vocabularies.clear();
         for (CheckBox cb : vocabChecks)
             if (cb.isChecked()) cfg.vocabularies.add((String) cb.getTag());

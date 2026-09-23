@@ -70,4 +70,34 @@ public class JsInject {
                     + ".filter(function(x){return !x.disabled&&x.offsetParent!==null;});"
                     + "var i=els.indexOf(document.activeElement);if(els.length===0)return;"
                     + "var next=els[(i+1)%els.length];next.focus();if(next.select)next.select();})();";
+
+    /**
+     * 模拟登录（Windows 版 InjectedScripts.AutoLogin 移植）：
+     * 轮询等表单 → 原生setter填充（React/Vue兼容）→ 提交 → 用户名框消失判成功。
+     * 结果 KioskBridge.post {type:'loginResult', result:'success'|'failed'|'notfound'}。
+     */
+    public static String autoLogin(String userSel, String passSel, String submitSel,
+                                   String user, String pass, int maxWaitMs, int pollMs) {
+        return "(function(){var cfg={userSel:" + js(userSel) + ",passSel:" + js(passSel)
+                + ",submitSel:" + js(submitSel) + ",user:" + js(user) + ",pass:" + js(pass)
+                + ",maxWaitMs:" + maxWaitMs + ",pollMs:" + pollMs + "};"
+                + "function post(o){try{KioskBridge.post(JSON.stringify(o));}catch(e){}}"
+                + "function find(sel){try{return sel?document.querySelector(sel):null;}catch(e){return null;}}"
+                + "function setVal(el,v){el.focus();"
+                + "var proto=el.tagName==='TEXTAREA'?window.HTMLTextAreaElement.prototype:window.HTMLInputElement.prototype;"
+                + "var desc=Object.getOwnPropertyDescriptor(proto,'value');"
+                + "if(desc&&desc.set)desc.set.call(el,v);else el.value=v;"
+                + "el.dispatchEvent(new Event('input',{bubbles:true}));"
+                + "el.dispatchEvent(new Event('change',{bubbles:true}));}"
+                + "var waited=0;var timer=setInterval(function(){"
+                + "var u=find(cfg.userSel),p=find(cfg.passSel);"
+                + "if(u&&p){clearInterval(timer);setVal(u,cfg.user);setVal(p,cfg.pass);"
+                + "setTimeout(function(){var btn=find(cfg.submitSel);"
+                + "if(btn)btn.click();else if(p.form){if(p.form.requestSubmit)p.form.requestSubmit();else p.form.submit();}"
+                + "var vwaited=0;var vt=setInterval(function(){vwaited+=500;"
+                + "if(!find(cfg.userSel)){clearInterval(vt);post({type:'loginResult',result:'success'});}"
+                + "else if(vwaited>=8000){clearInterval(vt);post({type:'loginResult',result:'failed'});}},500);},300);return;}"
+                + "waited+=cfg.pollMs;if(waited>=cfg.maxWaitMs){clearInterval(timer);post({type:'loginResult',result:'notfound'});}"
+                + "},cfg.pollMs);})();";
+    }
 }

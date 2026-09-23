@@ -86,6 +86,9 @@ public class MainActivity extends AppCompatActivity {
                 ui.post(() -> { ui.removeCallbacks(hideKbRunnable); ui.postDelayed(hideKbRunnable, 500); });
             }
             @Override public void onZoneTap(float x, float y) { /* 原生检测已覆盖，备用 */ }
+            @Override public void onLoginResult(String result) {
+                ui.post(() -> handleLoginResult(result));
+            }
         }), "KioskBridge");
 
         web.setWebViewClient(new WebViewClient() {
@@ -101,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(KioskApp.TAG, "page finished: " + url);
                 // inject 模式：注入焦点上报+压系统IME；ime 模式：系统自然唤起本应用的输入法
                 if (isInjectMode()) view.evaluateJavascript(JsInject.focusNotify(), null);
-                // TODO Phase3: AutoLogin 注入
+                tryAutoLogin(view);
             }
         });
         web.setWebChromeClient(new WebChromeClient());
@@ -173,6 +176,40 @@ public class MainActivity extends AppCompatActivity {
 
     private void js(String script) {
         web.evaluateJavascript(script, null);
+    }
+
+    // ---------------- 模拟登录 ----------------
+
+    private int loginFailures = 0;
+    private static final int MAX_LOGIN_FAILURES = 3;
+
+    private void tryAutoLogin(WebView view) {
+        if (!cfg.autoLoginEnabled || loginFailures >= MAX_LOGIN_FAILURES
+                || settingsPanel != null || cfg.autoLoginUser.isEmpty()) return;
+        Log.i(KioskApp.TAG, "auto login attempt (" + (loginFailures + 1) + "/" + MAX_LOGIN_FAILURES + ")");
+        view.evaluateJavascript(JsInject.autoLogin(
+                cfg.usernameSelector, cfg.passwordSelector, cfg.submitSelector,
+                cfg.autoLoginUser, cfg.autoLoginPass,
+                cfg.maxWaitSeconds * 1000, cfg.pollIntervalMs), null);
+    }
+
+    private void handleLoginResult(String result) {
+        switch (result) {
+            case "success":
+                loginFailures = 0;
+                Log.i(KioskApp.TAG, "auto login success");
+                break;
+            case "failed":
+                loginFailures++;
+                Log.w(KioskApp.TAG, "auto login failed (" + loginFailures + "/" + MAX_LOGIN_FAILURES + ")");
+                if (loginFailures >= MAX_LOGIN_FAILURES)
+                    Log.e(KioskApp.TAG, "auto login paused after 3 consecutive failures");
+                break;
+            case "notfound":
+                break; // 非登录页，正常情况
+            default:
+                Log.w(KioskApp.TAG, "auto login result: " + result);
+        }
     }
 
     // ---------------- 设置面板 ----------------

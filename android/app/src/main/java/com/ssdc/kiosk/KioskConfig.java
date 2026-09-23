@@ -40,6 +40,16 @@ public class KioskConfig {
     public List<String> vocabularies = new ArrayList<>(java.util.Arrays.asList("general"));
     public String customVocabulary = "";
 
+    // 模拟登录（小厂软件兜底；与 Windows 版同模型）
+    public boolean autoLoginEnabled = false;
+    public String usernameSelector = "#username";
+    public String passwordSelector = "#password";
+    public String submitSelector = "#login-btn";
+    public int maxWaitSeconds = 10;
+    public int pollIntervalMs = 500;
+    public String autoLoginUser = "";      // TODO 二期: 凭据加密（对齐 Windows AES-256-GCM）
+    public String autoLoginPass = "";
+
     public static KioskConfig load() {
         KioskConfig cfg = new KioskConfig();
         try {
@@ -87,6 +97,20 @@ public class KioskConfig {
                 cfg.timeWindowMs = zone.optInt("timeWindowMs", cfg.timeWindowMs);
                 cfg.maxGapMs = zone.optInt("maxGapMs", cfg.maxGapMs);
             }
+            JSONObject al = j.optJSONObject("autoLogin");
+            if (al != null) {
+                cfg.autoLoginEnabled = al.optBoolean("enabled", cfg.autoLoginEnabled);
+                cfg.usernameSelector = al.optString("usernameSelector", cfg.usernameSelector);
+                cfg.passwordSelector = al.optString("passwordSelector", cfg.passwordSelector);
+                cfg.submitSelector = al.optString("submitSelector", cfg.submitSelector);
+                cfg.maxWaitSeconds = al.optInt("maxWaitSeconds", cfg.maxWaitSeconds);
+                cfg.pollIntervalMs = al.optInt("pollIntervalMs", cfg.pollIntervalMs);
+                JSONObject cred = al.optJSONObject("credentials");
+                if (cred != null) {
+                    cfg.autoLoginUser = cred.optString("username", cfg.autoLoginUser);
+                    cfg.autoLoginPass = cred.optString("password", cfg.autoLoginPass);
+                }
+            }
         } catch (Exception e) {
             Log.e(KioskApp.TAG, "config load failed, using defaults: " + e.getMessage());
         }
@@ -114,11 +138,23 @@ public class KioskConfig {
             kb.put("enableChinese", enableChinese);
             kb.put("vocabularies", new JSONArray(vocabularies));
             kb.put("customVocabulary", customVocabulary);
+            JSONObject al = new JSONObject();
+            al.put("enabled", autoLoginEnabled);
+            al.put("usernameSelector", usernameSelector);
+            al.put("passwordSelector", passwordSelector);
+            al.put("submitSelector", submitSelector);
+            al.put("maxWaitSeconds", maxWaitSeconds);
+            al.put("pollIntervalMs", pollIntervalMs);
+            JSONObject cred = new JSONObject();
+            cred.put("username", autoLoginUser);
+            cred.put("password", autoLoginPass);
+            al.put("credentials", cred);
             JSONObject j = new JSONObject();
             j.put("version", "1.0");
             j.put("browser", browser);
             j.put("settingsEntry", zone);
             j.put("keyboard", kb);
+            j.put("autoLogin", al);
             j.put("devMode", devMode);
             FileWriter w = new FileWriter(PATH);
             w.write(j.toString(2));

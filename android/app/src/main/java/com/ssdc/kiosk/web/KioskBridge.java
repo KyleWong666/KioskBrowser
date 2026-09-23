@@ -17,6 +17,7 @@ public class KioskBridge {
         void onFocus();          // 可输入元素获得焦点 → 弹键盘
         void onBlur();           // 失焦 → 收键盘
         void onZoneTap(float x, float y); // 页面内左上角区域点击（Android 侧已有原生检测，备用）
+        void onLoginResult(String result); // 模拟登录结果：success|failed|notfound
     }
 
     private final Listener listener;
@@ -33,6 +34,9 @@ public class KioskBridge {
                 case "blur": listener.onBlur(); break;
                 case "zonetap":
                     listener.onZoneTap((float) o.optDouble("x"), (float) o.optDouble("y"));
+                    break;
+                case "loginResult":
+                    listener.onLoginResult(o.optString("result", "unknown"));
                     break;
             }
         } catch (Exception e) {
