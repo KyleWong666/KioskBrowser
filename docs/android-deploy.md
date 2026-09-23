@@ -75,6 +75,8 @@ adb -s <设备> shell dpm remove-active-admin --user current com.ssdc.kiosk/.adm
 
 ## 已知事项
 
+- 已默认允许明文 HTTP（`usesCleartextTraffic=true`，内网平台必需；Android 9+ 默认禁止）。
+- 如设备状态栏/导航栏有厂商残留，可再补一刀（root）：`settings put global policy_control immersive.full=com.ssdc.kiosk`
 - 电池优化白名单：长期运行设备请在 设置→电池 里把 KioskBrowser 设为不优化。
 - WebView 内核版本随设备系统/厂商 ROM，建议保持 Android System WebView 更新。
 - 一期范围：霸屏骨架已完成（沉浸+LockTask+自启+白名单+连击入口）；
