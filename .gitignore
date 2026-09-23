@@ -20,3 +20,9 @@ cmd_queue.json
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/build/
+android/keystore/

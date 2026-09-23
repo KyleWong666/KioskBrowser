@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device-admin>
+    <!-- Kiosk 不需要声明具体策略：Device Owner 身份本身即可用 LockTask/全局设置 -->
+    <uses-policies />
+</device-admin>
