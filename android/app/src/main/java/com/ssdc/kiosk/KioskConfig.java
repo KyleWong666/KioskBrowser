@@ -32,6 +32,13 @@ public class KioskConfig {
     public int timeWindowMs = 5000;
     public int maxGapMs = 800;
 
+    // 软键盘 / 输入法
+    public boolean keyboardEnabled = true;
+    public int keyboardHeightPercent = 35;
+    public boolean enableChinese = false;
+    public List<String> vocabularies = new ArrayList<>(java.util.Arrays.asList("general"));
+    public String customVocabulary = "";
+
     public static KioskConfig load() {
         KioskConfig cfg = new KioskConfig();
         try {
@@ -57,6 +64,19 @@ public class KioskConfig {
                         cfg.navigationWhitelist.add(wl.optString(i));
             }
             cfg.devMode = j.optBoolean("devMode", false);
+            JSONObject kb = j.optJSONObject("keyboard");
+            if (kb != null) {
+                cfg.keyboardEnabled = kb.optBoolean("enabled", cfg.keyboardEnabled);
+                cfg.keyboardHeightPercent = kb.optInt("heightPercent", cfg.keyboardHeightPercent);
+                cfg.enableChinese = kb.optBoolean("enableChinese", cfg.enableChinese);
+                cfg.customVocabulary = kb.optString("customVocabulary", cfg.customVocabulary);
+                JSONArray vs = kb.optJSONArray("vocabularies");
+                if (vs != null) {
+                    cfg.vocabularies.clear();
+                    for (int i = 0; i < vs.length(); i++)
+                        cfg.vocabularies.add(vs.optString(i));
+                }
+            }
             JSONObject zone = j.optJSONObject("settingsEntry");
             if (zone != null) {
                 cfg.zoneTapEnabled = zone.optBoolean("enabled", cfg.zoneTapEnabled);
@@ -85,10 +105,17 @@ public class KioskConfig {
             zone.put("tapCount", tapCount);
             zone.put("timeWindowMs", timeWindowMs);
             zone.put("maxGapMs", maxGapMs);
+            JSONObject kb = new JSONObject();
+            kb.put("enabled", keyboardEnabled);
+            kb.put("heightPercent", keyboardHeightPercent);
+            kb.put("enableChinese", enableChinese);
+            kb.put("vocabularies", new JSONArray(vocabularies));
+            kb.put("customVocabulary", customVocabulary);
             JSONObject j = new JSONObject();
             j.put("version", "1.0");
             j.put("browser", browser);
             j.put("settingsEntry", zone);
+            j.put("keyboard", kb);
             j.put("devMode", devMode);
             FileWriter w = new FileWriter(PATH);
             w.write(j.toString(2));
