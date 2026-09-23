@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         st.setLoadWithOverviewMode(true);
         st.setMediaPlaybackRequiresUserGesture(false);
         if (cfg.devMode) WebView.setWebContentsDebuggingEnabled(true);
-        suppressSystemIme();
+        if (isInjectMode()) suppressSystemIme(); // ime 模式必须让系统正常唤起输入法
 
         web.addJavascriptInterface(new KioskBridge(new KioskBridge.Listener() {
             @Override public void onFocus() {
@@ -99,7 +99,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 Log.i(KioskApp.TAG, "page finished: " + url);
-                view.evaluateJavascript(JsInject.focusNotify(), null);
+                // inject 模式：注入焦点上报+压系统IME；ime 模式：系统自然唤起本应用的输入法
+                if (isInjectMode()) view.evaluateJavascript(JsInject.focusNotify(), null);
                 // TODO Phase3: AutoLogin 注入
             }
         });
@@ -123,11 +124,13 @@ public class MainActivity extends AppCompatActivity {
             }, new android.content.IntentFilter("com.ssdc.kiosk.OPEN_SETTINGS"));
         }
         // 拼音引擎加载 + 词库配置（后台线程，18.5 万词约 2s，不卡首屏）
-        new Thread(() -> {
-            PinyinEngine eng = PinyinEngine.get(this);
-            eng.configure(this, cfg.vocabularies, cfg.customVocabulary);
-            ui.post(() -> keyboard.setEngine(eng));
-        }).start();
+        if (isInjectMode()) {
+            new Thread(() -> {
+                PinyinEngine eng = PinyinEngine.get(this);
+                eng.configure(this, cfg.vocabularies, cfg.customVocabulary);
+                ui.post(() -> { if (keyboard != null) keyboard.setEngine(eng); });
+            }).start();
+        }
 
         if (!"about:blank".equals(cfg.homeUrl)) web.loadUrl(cfg.homeUrl);
         Log.i(KioskApp.TAG, "initialized, kioskMode=" + cfg.kioskMode
@@ -136,7 +139,13 @@ public class MainActivity extends AppCompatActivity {
 
     // ---------------- 软键盘 ----------------
 
+    /** inject=内置键盘 JS 注入（降级）；ime=系统输入法（默认，见 KioskImeService）。 */
+    private boolean isInjectMode() {
+        return "inject".equalsIgnoreCase(cfg.keyboardMode);
+    }
+
     private void initKeyboard() {
+        if (!isInjectMode()) return;  // ime 模式：无内置键盘，系统自动唤起 KioskImeService
         keyboard = new KeyboardView(this, new KeyboardView.KeyListener() {
             @Override public void onCommit(String text) { js(JsInject.insertText(text)); }
             @Override public void onBackspace() { js(JsInject.BACKSPACE); }
@@ -151,14 +160,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setKeyboardVisible(boolean visible) {
-        if (!cfg.keyboardEnabled) visible = false;
+        if (!cfg.keyboardEnabled || keyboard == null) visible = false;
         int h = visible ? (int) (root.getHeight() * (cfg.keyboardHeightPercent / 100.0f)) : 0;
         ViewGroup.LayoutParams lp = keyboardHost.getLayoutParams();
         if (lp.height != h) {
             lp.height = h;
             keyboardHost.setLayoutParams(lp);
         }
-        if (!visible) keyboard.reset();
+        if (!visible && keyboard != null) keyboard.reset();
         Log.d(KioskApp.TAG, "keyboard " + (visible ? "shown" : "hidden"));
     }
 

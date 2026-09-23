@@ -36,6 +36,8 @@ public class PinyinEngine {
     private final Map<String, String> wordToKey = new HashMap<>();
     private final List<String> syllablesByLenDesc = new ArrayList<>();
     private String[] phraseKeys = new String[0];
+    /** 词组键按首字母分桶（前缀扫描从全表 18.5 万降到单桶几千，低端板击键提速关键）。 */
+    private final Map<Character, List<String>> phraseKeysByFirst = new HashMap<>();
 
     private boolean generalEnabled = true;
     private List<String[]> boost = new ArrayList<>(); // {word, key, initials}
@@ -94,6 +96,8 @@ public class PinyinEngine {
         e.syllablesByLenDesc.sort((a, b) -> b.length() - a.length());
         e.phraseKeys = e.phrases.keySet().toArray(new String[0]);
         Arrays.sort(e.phraseKeys, Comparator.comparingInt(String::length));
+        for (String k : e.phraseKeys)  // 有序遍历分配，桶内保持长度升序
+            e.phraseKeysByFirst.computeIfAbsent(k.charAt(0), c -> new ArrayList<>()).add(k);
         Log.i(KioskApp.TAG, "pinyin engine loaded: " + e.chars.size() + " syllables, "
                 + e.phraseKeys.length + " phrase keys, " + e.initials.size() + " initials keys");
         return e;
@@ -141,14 +145,18 @@ public class PinyinEngine {
             for (int i = 0; i < cs.length() && result.size() < max; i++)
                 result.add(String.valueOf(cs.charAt(i)));
 
-        // 3) 词组前缀
-        if (generalEnabled && result.size() < max && input.length() >= 2)
-            for (String key : phraseKeys) {
-                if (result.size() >= max) break;
-                if (key.length() <= input.length() || !key.startsWith(input)) continue;
-                String[] ws = phrases.get(key);
-                for (int i = 0; i < Math.min(2, ws.length); i++) result.add(ws[i]);
-            }
+        // 3) 词组前缀（按首字母分桶，只扫单桶）
+        if (generalEnabled && result.size() < max && input.length() >= 2) {
+            List<String> bucket = phraseKeysByFirst.get(input.charAt(0));
+            if (bucket != null)
+                for (String key : bucket) {
+                    if (result.size() >= max) break;
+                    if (key.length() <= input.length()) continue; // 桶内按长度升序
+                    if (!key.startsWith(input)) continue;
+                    String[] ws = phrases.get(key);
+                    for (int i = 0; i < Math.min(2, ws.length); i++) result.add(ws[i]);
+                }
+        }
 
         // 4) 首字母输入（2~5 字母）
         if (generalEnabled && result.size() < max && input.length() >= 2 && input.length() <= 5

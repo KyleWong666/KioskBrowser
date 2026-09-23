@@ -35,6 +35,19 @@
             </intent-filter>
         </activity>
 
+        <!-- 自研输入法（Kiosk 专用，装机 ime enable + ime set 设为默认） -->
+        <service
+            android:name=".ime.KioskImeService"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+
         <!-- Device Owner 管控（adb dpm set-device-owner 授权后生效 LockTask） -->
         <receiver
             android:name=".admin.KioskAdminReceiver"

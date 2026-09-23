@@ -71,6 +71,23 @@ public class SettingsPanel extends FrameLayout {
         chkKiosk = addCheck(card, "霸屏模式（沉浸 + LockTask）", cfg.kioskMode);
         chkChinese = addCheck(card, "启用中文拼音输入", cfg.enableChinese);
 
+        card.addView(label("键盘模式："));
+        android.widget.Spinner spMode = new android.widget.Spinner(getContext());
+        android.widget.ArrayAdapter<String> modeAdapter = new android.widget.ArrayAdapter<>(getContext(),
+                android.R.layout.simple_spinner_item,
+                new String[]{"系统输入法（ime，推荐）", "内置键盘（inject，降级）"});
+        modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spMode.setAdapter(modeAdapter);
+        spMode.setSelection("inject".equalsIgnoreCase(cfg.keyboardMode) ? 1 : 0);
+        spMode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(android.widget.AdapterView<?> p, View v, int pos, long id) {
+                cfg.keyboardMode = pos == 1 ? "inject" : "ime";
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> p) {}
+        });
+        card.addView(spMode);
+        card.addView(space(8));
+
         card.addView(label("键盘高度：" + cfg.keyboardHeightPercent + "%"));
         seekHeight = new SeekBar(getContext());
         seekHeight.setMax(25);

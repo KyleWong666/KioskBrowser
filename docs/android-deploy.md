@@ -31,6 +31,21 @@ adb -s <设备> shell mkdir -p /sdcard/kiosk
 adb -s <设备> push config.json /sdcard/kiosk/config.json
 ```
 
+## 输入法（Kiosk 自研 IME，键盘默认模式 ime）
+
+键盘有两种模式（config `keyboard.mode`，设置面板可切）：
+- **ime（默认，推荐）**：APK 内置 InputMethodService 作为系统默认输入法，
+  上屏走 InputConnection 直写（零 JS IPC，不卡），原生/Web 输入框通吃；
+- **inject（降级）**：应用内嵌键盘 + JS 注入，无法设默认输入法的环境用。
+
+ime 模式装机必须执行（install.bat 已包含）：
+```bash
+adb -s <设备> shell ime enable com.ssdc.kiosk/.ime.KioskImeService
+adb -s <设备> shell ime set com.ssdc.kiosk/.ime.KioskImeService
+# 验证: adb shell settings get secure default_input_method
+# 注意: 安装后等 2~3 秒再执行（PM 注册有延迟，否则报 Unknown input method）
+```
+
 ## 开启 Device Owner（正规 Kiosk 管控）
 
 前置：设备**没有登录任何账号**（设置→账户里清空），有 root 更省事。

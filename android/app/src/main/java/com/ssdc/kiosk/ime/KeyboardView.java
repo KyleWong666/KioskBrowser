@@ -108,7 +108,7 @@ public class KeyboardView extends LinearLayout {
                 fnKey("⇧", 1.5f, v -> { shift = !shift; rebuildKeys(); }),
                 keys(letter("z",up),letter("x",up),letter("c",up),letter("v",up),letter("b",up),
                         letter("n",up),letter("m",up)),
-                fnKey("⌫", 1.5f, v -> backspace()));
+                repeatKey("⌫", 1.5f, this::backspace));
         addKeyRow(keysHost,
                 fnKey("123", 1.5f, v -> { symbols = true; rebuildKeys(); }),
                 fnKey(chineseAllowed ? (chinese ? "中文" : "EN") : "EN", 1.5f, v -> {
@@ -130,7 +130,7 @@ public class KeyboardView extends LinearLayout {
         addKeyRow(keysHost, row("'", "\"", "\\", "|","<",">","?","/","~"));
         addKeyRow(keysHost,
                 keys("￥","…","、","「","」","『","』","【","】"),
-                fnKey("⌫", 1.5f, v -> backspace()));
+                repeatKey("⌫", 1.5f, this::backspace));
         addKeyRow(keysHost,
                 fnKey("abc", 1.5f, v -> { symbols = false; rebuildKeys(); }),
                 fnKey(chineseAllowed ? (chinese ? "中文" : "EN") : "EN", 1.5f, v -> {
@@ -266,6 +266,32 @@ public class KeyboardView extends LinearLayout {
     private Button fnKey(String label, float weight, OnClickListener l) {
         Button b = makeButton(label, true);
         b.setOnClickListener(l);
+        b.setLayoutParams(keyLp(weight));
+        return b;
+    }
+
+    /** 按住连发键（退格用）：400ms 后每 50ms 触发一次。 */
+    private Button repeatKey(String label, float weight, Runnable action) {
+        Button b = makeButton(label, true);
+        final android.os.Handler h = new android.os.Handler();
+        final Runnable[] tick = new Runnable[1];
+        tick[0] = new Runnable() {
+            @Override public void run() {
+                action.run();
+                h.postDelayed(this, 50);
+            }
+        };
+        b.setOnTouchListener((v, ev) -> {
+            int a = ev.getAction();
+            if (a == android.view.MotionEvent.ACTION_DOWN) {
+                action.run();
+                h.postDelayed(tick[0], 400);
+            } else if (a == android.view.MotionEvent.ACTION_UP
+                    || a == android.view.MotionEvent.ACTION_CANCEL) {
+                h.removeCallbacks(tick[0]);
+            }
+            return true;
+        });
         b.setLayoutParams(keyLp(weight));
         return b;
     }

@@ -34,6 +34,7 @@ public class KioskConfig {
 
     // 软键盘 / 输入法
     public boolean keyboardEnabled = true;
+    public String keyboardMode = "ime";    // ime=系统输入法(推荐) | inject=内置键盘JS注入(降级)
     public int keyboardHeightPercent = 35;
     public boolean enableChinese = false;
     public List<String> vocabularies = new ArrayList<>(java.util.Arrays.asList("general"));
@@ -67,6 +68,7 @@ public class KioskConfig {
             JSONObject kb = j.optJSONObject("keyboard");
             if (kb != null) {
                 cfg.keyboardEnabled = kb.optBoolean("enabled", cfg.keyboardEnabled);
+                cfg.keyboardMode = kb.optString("mode", cfg.keyboardMode);
                 cfg.keyboardHeightPercent = kb.optInt("heightPercent", cfg.keyboardHeightPercent);
                 cfg.enableChinese = kb.optBoolean("enableChinese", cfg.enableChinese);
                 cfg.customVocabulary = kb.optString("customVocabulary", cfg.customVocabulary);
@@ -107,6 +109,7 @@ public class KioskConfig {
             zone.put("maxGapMs", maxGapMs);
             JSONObject kb = new JSONObject();
             kb.put("enabled", keyboardEnabled);
+            kb.put("mode", keyboardMode);
             kb.put("heightPercent", keyboardHeightPercent);
             kb.put("enableChinese", enableChinese);
             kb.put("vocabularies", new JSONArray(vocabularies));
