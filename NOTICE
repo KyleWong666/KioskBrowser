@@ -1,0 +1,31 @@
+KioskBrowser 第三方组件声明
+============================
+
+本产品包含以下第三方组件，各自许可证版权归其作者所有：
+
+运行时 / 框架
+-------------
+- .NET 6 Runtime (Microsoft)                     — MIT License
+- Microsoft.Web.WebView2                         — Microsoft WebView2 许可（BSD 风格）
+  运行时 WebView2 Runtime 由微软分发，部署机需另行安装（install.bat 自动检测引导）
+
+NuGet 依赖
+----------
+- NAudio (Mark Heath)                            — MS-PL（音频采集，语音输入用）
+- org.k2fsa.sherpa.onnx (k2 团队)                — Apache-2.0（本地离线语音识别引擎）
+
+数据资源（内嵌于程序集）
+------------------------
+- pinyin-data (mozillazg)                        — MIT License（汉字拼音数据，3.6 万字）
+- phrase-pinyin-data (mozillazg)                 — MIT License（词组拼音数据，18.5 万词）
+- jieba 中文分词词频数据 (fxsjy)                 — MIT License（词频排序参考）
+
+语音模型（运行时按需下载，不随安装包分发）
+------------------------------------------
+- sherpa-onnx 中文流式/paraformer 识别模型（k2 团队发布于 HuggingFace，
+  经 hf-mirror.com 镜像下载），许可以模型发布页为准。
+
+说明
+----
+- 专业版组件（KioskBrowser.Pro / KioskBrowser.Sso，含 Jint、BouncyCastle 等依赖）
+  为闭源商业组件，不在本仓库分发，其依赖声明见专业版发布包。

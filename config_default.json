@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "browser": {
+    "homeUrl": "about:blank",
+    "kioskMode": true,
+    "fullscreen": true,
+    "alwaysOnTop": true,
+    "blockSystemKeys": true,
+    "navigationWhitelist": []
+  },
+  "settingsEntry": {
+    "enabled": true,
+    "zoneSize": 80,
+    "tapCount": 8,
+    "timeWindowMs": 5000,
+    "maxGapMs": 800,
+    "deviationPx": 20,
+    "maxAttempts": 5,
+    "lockoutSeconds": 60,
+    "passwordHash": ""
+  },
+  "autoLogin": {
+    "enabled": false,
+    "usernameSelector": "#username",
+    "passwordSelector": "#password",
+    "submitSelector": "#login-btn",
+    "maxWaitSeconds": 10,
+    "pollIntervalMs": 500,
+    "credentials": {
+      "username": "",
+      "password": ""
+    }
+  },
+  "keyboard": {
+    "enabled": true,
+    "heightPercent": 35,
+    "layout": "qwerty",
+    "enableChinese": false,
+    "vocabularies": ["general"],
+    "customVocabulary": ""
+  },
+  "watchdog": {
+    "heartbeatIntervalMs": 3000,
+    "missedHeartbeatsBeforeRestart": 3,
+    "memoryThresholdMB": 1024,
+    "autoStart": true,
+    "webhookUrl": ""
+  },
+  "speech": {
+    "enabled": false,
+    "modelSize": "medium",
+    "hotwordsScore": 1.5
+  },
+  "devMode": false
+}

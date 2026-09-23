@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{CAC71EDD-C7E2-446F-AE0A-30C9D0C62F81}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KioskBrowser.Shared", "src\KioskBrowser.Shared\KioskBrowser.Shared.csproj", "{3FDA5DDB-E5F3-41A8-B43B-971C58B30197}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KioskBrowser", "src\KioskBrowser\KioskBrowser.csproj", "{BC1ADA83-1F48-4710-BD71-08D6F87114BB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KioskBrowser.Watchdog", "src\KioskBrowser.Watchdog\KioskBrowser.Watchdog.csproj", "{0B4E0238-170B-4117-B5B6-A47F1B96123D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KioskBrowser.Abstractions", "src\KioskBrowser.Abstractions\KioskBrowser.Abstractions.csproj", "{ABB6663A-88F7-4C8A-9899-0A2E3014FA99}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3FDA5DDB-E5F3-41A8-B43B-971C58B30197}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3FDA5DDB-E5F3-41A8-B43B-971C58B30197}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3FDA5DDB-E5F3-41A8-B43B-971C58B30197}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3FDA5DDB-E5F3-41A8-B43B-971C58B30197}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC1ADA83-1F48-4710-BD71-08D6F87114BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC1ADA83-1F48-4710-BD71-08D6F87114BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC1ADA83-1F48-4710-BD71-08D6F87114BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC1ADA83-1F48-4710-BD71-08D6F87114BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B4E0238-170B-4117-B5B6-A47F1B96123D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B4E0238-170B-4117-B5B6-A47F1B96123D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B4E0238-170B-4117-B5B6-A47F1B96123D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B4E0238-170B-4117-B5B6-A47F1B96123D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABB6663A-88F7-4C8A-9899-0A2E3014FA99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABB6663A-88F7-4C8A-9899-0A2E3014FA99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABB6663A-88F7-4C8A-9899-0A2E3014FA99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABB6663A-88F7-4C8A-9899-0A2E3014FA99}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3FDA5DDB-E5F3-41A8-B43B-971C58B30197} = {CAC71EDD-C7E2-446F-AE0A-30C9D0C62F81}
+		{BC1ADA83-1F48-4710-BD71-08D6F87114BB} = {CAC71EDD-C7E2-446F-AE0A-30C9D0C62F81}
+		{0B4E0238-170B-4117-B5B6-A47F1B96123D} = {CAC71EDD-C7E2-446F-AE0A-30C9D0C62F81}
+		{ABB6663A-88F7-4C8A-9899-0A2E3014FA99} = {CAC71EDD-C7E2-446F-AE0A-30C9D0C62F81}
+	EndGlobalSection
+EndGlobal
