@@ -58,9 +58,10 @@ src/
 ├── KioskBrowser.Watchdog/    # 守护进程 (KioskWatchdog.exe)
 ├── KioskBrowser.Abstractions/# 专业版插件契约 (IProHost/IProPlugin) + 公共 UI 工具
 └── KioskBrowser.Shared/      # 配置模型 / AES-256-GCM 凭据加密 / 日志 / 管道 IPC
+android/                      # Android 版（com.ssdc.kiosk，见上节）
 tools/                        # 研发测试工具（输入法引擎/候选栏/语音/基准等离屏验证）
 test/                         # 测试页面
-docs/                         # 使用说明书
+docs/                         # 使用说明书 / Android 部署指南
 ```
 
 ## 插件机制（专业版扩展点）
@@ -73,6 +74,18 @@ docs/                         # 使用说明书
 | `KioskBrowser.Pro.dll` | 远程管理客户端（注册/心跳/命令/截屏/扫码激活） | 远程管理不可用，其余功能不受影响 |
 
 插件契约见 `src/KioskBrowser.Abstractions`（`IProHost` / `IProPlugin`），可自行实现同接口的扩展。
+
+## Android 版（`android/`）
+
+安卓一体机版（政务/医院查询机、排队机等 ARM 触摸屏设备），功能与 Windows 社区版对齐，
+已在 RK3568 / Android 11 真机全项验证：
+
+- 霸屏（沉浸 + **Device Owner LockTask** 官方 Kiosk 管控）+ 开机自启 + 导航白名单
+- **自研系统输入法（IME）**：InputConnection 直写零卡顿，拼音输入法（18.5 万词）+ 领域/自定义词库
+- 模拟登录（选择器注入 + 3 次熔断）、语音输入（sherpa-onnx 本地离线，按住说话）
+- 左上角 8 连击设置面板（URL/霸屏/键盘模式/词库/模拟登录/语音/退出 Kiosk）
+
+构建与部署（install.bat 一键装机，含默认输入法与 Device Owner 授权）：见 [docs/android-deploy.md](docs/android-deploy.md)。
 
 ## 专业版（KioskBrowser Pro）
 

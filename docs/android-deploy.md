@@ -83,7 +83,7 @@ adb -s <设备> shell dpm remove-active-admin --user current com.ssdc.kiosk/.adm
 
 | 场景 | 操作 |
 |---|---|
-| 进设置 | 屏幕左上角 80×80 连击 8 次（Phase2 出面板，当前为 Toast 占位） |
+| 进设置 | 屏幕左上角 80×80 连击 8 次 → 设置面板（改 URL/键盘/词库/模拟登录/语音/退出） |
 | 退出 LockTask | adb 解除管控（见上） |
 | 清 WebView 登录态 | `adb shell pm clear com.ssdc.kiosk`（会连配置数据一起清，谨慎） |
 | 查日志 | `adb logcat -s KioskBrowser:I` |
@@ -106,5 +106,5 @@ config `speech.enabled=true`（或设置面板勾选）→ 键盘底排出现 �
 - 如设备状态栏/导航栏有厂商残留，可再补一刀（root）：`settings put global policy_control immersive.full=com.ssdc.kiosk`
 - 电池优化白名单：长期运行设备请在 设置→电池 里把 KioskBrowser 设为不优化。
 - WebView 内核版本随设备系统/厂商 ROM，建议保持 Android System WebView 更新。
-- 一期范围：霸屏骨架已完成（沉浸+LockTask+自启+白名单+连击入口）；
-  软键盘/拼音输入法（Phase2）、模拟登录（Phase3，移植 ids WebAutoLogin）、语音输入（Phase4，sherpa-onnx AAR）迭代中。
+- 功能状态（与 Windows 社区版对齐，全部真机验证）：霸屏/Device Owner/自启/IME 软键盘/拼音输入法/领域词库/设置面板/模拟登录/语音输入 ✅。
+- 二期规划：凭据加密（对齐 Windows AES-256-GCM）、远程管理/SSO（专业版）。
