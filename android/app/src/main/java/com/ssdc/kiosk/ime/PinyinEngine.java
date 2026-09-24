@@ -208,8 +208,10 @@ public class PinyinEngine {
                 Log.w(KioskApp.TAG, "vocab pack " + pack + " load failed: " + ex.getMessage());
             }
         }
-        for (String line : (customVocabulary == null ? "" : customVocabulary).split("\n")) {
-            String w = line.trim();
+        // 分隔符兼容：空格/换行/逗号/顿号/分号
+        for (String w : (customVocabulary == null ? "" : customVocabulary)
+                .split("[\\s,，、;；]+")) {
+            w = w.trim();
             if (w.length() > 0) words.add(w);
         }
         List<String[]> boost = new ArrayList<>();

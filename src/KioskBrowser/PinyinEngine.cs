@@ -226,10 +226,12 @@ public sealed class PinyinEngine
                 KioskBrowser.Shared.Logger.Warning($"vocab pack {pack} load failed: {ex.Message}");
             }
         }
-        foreach (var line in (customVocabulary ?? "").Split('\n'))
+        // 分隔符兼容：空格/换行/逗号/顿号/分号（一条粘贴一串也能用）
+        foreach (var w in System.Text.RegularExpressions.Regex.Split(
+                     customVocabulary ?? "", @"[\s,，、;；]+"))
         {
-            var w = line.Trim();
-            if (w.Length > 0) words.Add(w);
+            var word = w.Trim();
+            if (word.Length > 0) words.Add(word);
         }
 
         var boost = new List<(string, string, string)>();

@@ -247,14 +247,41 @@ public sealed class SettingsPanel : UserControl
         };
         var customRow = grid.RowCount++;
         grid.RowStyles.Add(new RowStyle(SizeType.Absolute, DpiHelper.S(96)));
-        grid.Controls.Add(new Label
+        // 左列：标题 + 导入按钮
+        var customLabelPanel = new FlowLayoutPanel
         {
-            Text = "自定义词库(一行一词)",
             Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            BackColor = BgColor,
+            WrapContents = false
+        };
+        customLabelPanel.Controls.Add(new Label
+        {
+            Text = "自定义词库",
+            AutoSize = true,
             ForeColor = FgColor,
+            Font = LabelFont
+        });
+        customLabelPanel.Controls.Add(new Label
+        {
+            Text = "(空格/逗号分隔)",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(140, 145, 165),
+            Font = new Font(LabelFont.FontFamily, LabelFont.Size - 1.5f)
+        });
+        var btnImport = new Button
+        {
+            Text = "导入文本…",
+            AutoSize = true,
+            BackColor = Color.FromArgb(70, 70, 82),
+            ForeColor = FgColor,
+            FlatStyle = FlatStyle.Flat,
             Font = LabelFont,
-            TextAlign = ContentAlignment.TopLeft
-        }, 0, customRow);
+            Margin = new Padding(0, 6, 0, 0)
+        };
+        btnImport.Click += (s, e) => ImportVocabulary();
+        customLabelPanel.Controls.Add(btnImport);
+        grid.Controls.Add(customLabelPanel, 0, customRow);
         _txtCustomVocab.Margin = new Padding(0, 4, 0, 4);
         grid.Controls.Add(_txtCustomVocab, 1, customRow);
 
@@ -480,6 +507,58 @@ public sealed class SettingsPanel : UserControl
         _cfg.Keyboard.CustomVocabulary = custom;
         _lblMsg.Text = "";
         return true;
+    }
+
+    /// <summary>词库分词：空格/换行/逗号/顿号/分号均可分隔（与引擎一致）。</summary>
+    private static readonly System.Text.RegularExpressions.Regex VocabSplitter =
+        new(@"[\s,，、;；]+", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>从文本文件导入自定义词库：读取 → 与现有内容合并去重 → 回填编辑框。</summary>
+    private void ImportVocabulary()
+    {
+        using var dlg = new OpenFileDialog
+        {
+            Title = "导入自定义词库",
+            Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dlg.ShowDialog() != DialogResult.OK) return;
+
+        string content;
+        try
+        {
+            var bytes = File.ReadAllBytes(dlg.FileName);
+            // 中文词表常见 UTF-8 / GBK 两种编码：先严格 UTF-8，失败回落系统默认(GBK)
+            try
+            {
+                content = new System.Text.UTF8Encoding(false, true).GetString(bytes);
+            }
+            catch (System.Text.DecoderFallbackException)
+            {
+                content = System.Text.Encoding.Default.GetString(bytes);
+            }
+        }
+        catch (Exception ex)
+        {
+            _lblMsg.Text = "读取失败：" + ex.Message;
+            return;
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var merged = new List<string>();
+        foreach (var w in VocabSplitter.Split(_txtCustomVocab.Text))
+            if (w.Trim().Length > 0 && seen.Add(w.Trim())) merged.Add(w.Trim());
+        var before = merged.Count;
+        foreach (var w in VocabSplitter.Split(content))
+            if (w.Trim().Length > 0 && seen.Add(w.Trim())) merged.Add(w.Trim());
+        var added = merged.Count - before;
+
+        // 回填：每行 8 词（便于浏览），保存时引擎按分隔符解析
+        _txtCustomVocab.Text = string.Join("\n",
+            merged.Select((w, i) => (w, i)).GroupBy(x => x.i / 8)
+                  .Select(g => string.Join(" ", g.Select(x => x.w))));
+        _lblMsg.Text = $"已导入 {added} 个新词（去重后共 {merged.Count} 个），记得保存";
     }
 
     private void RestoreDefaults()
