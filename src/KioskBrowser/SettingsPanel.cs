@@ -35,11 +35,7 @@ public sealed class SettingsPanel : UserControl
     private Label _lblModelStatus = null!;
     private CheckBox _chkRemote = null!;
     private TextBox _txtServerUrl = null!;
-    private Label _lblActivation = null!;
     private CheckBox _chkVocabGeneral = null!;
-
-    /// <summary>点击「扫码激活」。</summary>
-    public event EventHandler? ActivateRequested;
     private CheckBox _chkVocabGov = null!;
     private CheckBox _chkVocabMedical = null!;
     private CheckBox _chkVocabRetail = null!;
@@ -146,36 +142,6 @@ public sealed class SettingsPanel : UserControl
         };
         AddRowCustom(grid, "远程管理", _chkRemote);
         _txtServerUrl = AddRow(grid, "管理后台 URL");
-
-        // 付费激活状态 + 扫码按钮
-        var actPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            BackColor = BgColor,
-            Margin = new Padding(0, 4, 0, 4)
-        };
-        _lblActivation = new Label
-        {
-            AutoSize = true,
-            ForeColor = FgColor,
-            Font = LabelFont,
-            Margin = new Padding(0, 10, 20, 0)
-        };
-        var btnActivate = new Button
-        {
-            Text = "扫码激活",
-            Width = DpiHelper.S(130),
-            Height = DpiHelper.S(34),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(50, 110, 200),
-            ForeColor = Color.White,
-            Font = LabelFont
-        };
-        btnActivate.Click += (s, e) => ActivateRequested?.Invoke(this, EventArgs.Empty);
-        actPanel.Controls.Add(_lblActivation);
-        actPanel.Controls.Add(btnActivate);
-        AddRowCustom(grid, "付费激活", actPanel);
 
         // 语音输入（本地 sherpa-onnx，离线）
         _chkSpeech = new CheckBox
@@ -434,7 +400,6 @@ public sealed class SettingsPanel : UserControl
         _txtWebhook.Text = _cfg.Watchdog.WebhookUrl;
         _chkRemote.Checked = _cfg.Remote.Enabled;
         _txtServerUrl.Text = _cfg.Remote.ServerUrl;
-        SetActivationText("未激活（单机版免费使用）");
         _chkSpeech.Checked = _cfg.Speech.Enabled;
         var modelIdx = Array.FindIndex(Voice.ModelManager.Models, m => m.Key == _cfg.Speech.ModelSize);
         _cmbModelSize.SelectedIndex = modelIdx >= 0 ? modelIdx : 0; // 默认中文2025
@@ -576,15 +541,6 @@ public sealed class SettingsPanel : UserControl
     }
 
     public void ShowMessage(string msg) => _lblMsg.Text = msg;
-
-    /// <summary>更新激活状态显示（已激活时显示有效期）。</summary>
-    public void SetActivationText(string text)
-    {
-        _lblActivation.Text = text;
-        _lblActivation.ForeColor = text.StartsWith("已激活")
-            ? Color.FromArgb(110, 220, 140)
-            : Color.FromArgb(255, 180, 80);
-    }
 
     /// <summary>返回面板内部编辑的配置副本（ApplyToConfig 已把界面值写入）。</summary>
     public KioskConfig ExportConfig() => _cfg;

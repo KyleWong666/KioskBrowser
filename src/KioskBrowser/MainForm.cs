@@ -684,7 +684,6 @@ public sealed class MainForm : Form, IProHost
         _settings.SaveOnlyRequested += OnSaveOnly;
         _settings.CancelRequested += (s, e) => CloseSettings();
         _settings.ExitRequested += OnExitRequested;
-        _settings.ActivateRequested += (s, e) => ShowActivationDialog();
 
         _settingsMask.Controls.Add(_settings);
         Controls.Add(_settingsMask);
@@ -740,24 +739,6 @@ public sealed class MainForm : Form, IProHost
         // SettingsPanel.ApplyToConfig 已在触发事件前调用并写回其内部副本；
         // 这里需要拿到那份副本——通过重新序列化面板的配置。
         return _settings!.ExportConfig();
-    }
-
-    /// <summary>扫码付费激活（专业版功能，委托给插件）。</summary>
-    private void ShowActivationDialog()
-    {
-        if (_pro == null)
-        {
-            _settings?.ShowMessage("远程管理为专业版功能（未安装 KioskBrowser.Pro.dll）");
-            return;
-        }
-        _pro.ShowActivationDialog(_settingsMask!,
-            expiresAt =>
-            {
-                _settings?.SetActivationText(
-                    expiresAt.Length > 0 ? $"已激活（有效期至 {expiresAt}）" : "已激活");
-                Logger.Info($"activation success, expiresAt={expiresAt}");
-            },
-            () => { });
     }
 
     private void OnExitRequested(object? sender, EventArgs e)    {
@@ -818,13 +799,11 @@ public sealed class MainForm : Form, IProHost
         if (_pro == null)
         {
             Logger.Warning("KioskBrowser.Pro.dll 未安装：远程管理不可用（社区版）");
-            _settings?.SetActivationText("社区版（未安装专业版插件）");
             return;
         }
         try
         {
             _pro.Start(this);
-            _settings?.SetActivationText(_pro.ActivationStatusText);
             Logger.Info($"pro plugin started: {_pro.Name}");
         }
         catch (Exception ex)

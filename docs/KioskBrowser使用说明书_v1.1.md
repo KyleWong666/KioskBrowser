@@ -210,17 +210,16 @@ KioskBrowser 是一款专为公共场所触屏终端设计的专用浏览器，�
 
 ## 6. 远程管理 API（付费版）
 
-单机版永久免费、无广告；远程管理能力需**扫码付费激活**（按台/按年订阅）。
+单机版永久免费、无广告；远程管理能力需**服务端授权激活**（按台/按年订阅，线下结算）。
 
-### 6.1 激活流程
+### 6.1 激活流程（服务端操作，终端无支付通道）
 
 1. 设置页填写「管理后台 URL」并勾选「启用远程管理」→ 保存并重启
 2. 终端自动向后台注册（上报 MAC 地址、主机名、软件版本）
-3. 设置页「付费激活」行点「**扫码激活**」→ 弹窗显示收款二维码（金额由后台套餐决定）
-4. 微信/支付宝扫码付款 → 支付平台回调后台 → 终端轮询到支付成功 → 自动激活
-5. 设置页激活状态变为「已激活（有效期至 xxxx-xx-xx）」，远程命令即刻可用
+3. 管理员在后台「终端」详情页点「**激活**」按月授权，或预置**授权码**（licenseKey）
+4. 终端下次心跳收到 plan=paid，远程命令即刻可用
 
-> 到期未续费：后台自动将终端回落为 free，远程命令停止响应（本地单机功能不受影响）。
+> 到期未续费：后台 plan 回落为 free，远程命令停止响应（本地单机功能不受影响）。
 
 ### 6.2 协议接口（后台对接规范）
 
@@ -237,12 +236,6 @@ POST {serverUrl}/api/terminal/heartbeat        （每 15 秒，可配）
 
 POST {serverUrl}/api/terminal/command-result   （命令回执）
   → {mac, id, ok, message, image(base64 截图, 仅 screenshot 命令)}
-
-POST {serverUrl}/api/order/create              （激活下单）
-  → {mac, months}   ← {"ok":true, "orderId":"...","amount":199.0,"qrImage":"<base64 PNG>"}
-
-POST {serverUrl}/api/order/status              （订单轮询，3 秒）
-  → {mac, orderId}  ← {"ok":true,"status":"pending"|"paid","expiresAt":"..."}
 ```
 
 ### 6.3 支持的远程命令
