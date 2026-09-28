@@ -173,6 +173,10 @@ public sealed class MainForm : Form, IProHost
                 InjectedScripts.FocusAndZone(_config.SettingsEntry.ZoneSize));
             cw.WebMessageReceived += OnWebMessage;
             cw.NavigationCompleted += OnNavigationCompleted;
+            // SPA 路由跳转（pushState/replaceState）也触发模拟登录（不触发整页导航）
+            cw.HistoryChanged += (s, e) => _ = RunAutoLoginAsync("history");
+            // 子资源挂起的站点 NavigationCompleted 可能永不触发 → DOMContentLoaded 兜底
+            cw.DOMContentLoaded += (s, e) => _ = RunAutoLoginAsync("domcontentloaded");
             cw.NavigationStarting += OnNavigationStarting;
             cw.NewWindowRequested += (s, e) =>
             {
@@ -273,6 +277,7 @@ public sealed class MainForm : Form, IProHost
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        Logger.Debug($"navigation starting: {e.Uri}");
         var whitelist = _config.Browser.NavigationWhitelist;
         if (whitelist.Count == 0) return;
         try
@@ -424,6 +429,7 @@ public sealed class MainForm : Form, IProHost
 
     private async void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
+        Logger.Debug($"navigation completed: success={e.IsSuccess} status={e.WebErrorStatus}");
         if (!e.IsSuccess)
         {
             Logger.Warning($"navigation failed: {e.WebErrorStatus}");
@@ -459,13 +465,31 @@ public sealed class MainForm : Form, IProHost
             if (!TicketFallenBack) return; // 未降级前不走模拟登录
         }
 
-        if (_settingsOpen || !_config.AutoLogin.Enabled || _loginFailures >= 3) return;
+        await RunAutoLoginAsync("nav");
+    }
 
+    private bool _autoLoginRunning;
+
+    /// <summary>模拟登录入口（整页导航 + SPA 路由跳转共用）。reason: nav | history。</summary>
+    private async Task RunAutoLoginAsync(string reason)
+    {
+        if (_settingsOpen || !_config.AutoLogin.Enabled || _loginFailures >= 3)
+        {
+            Logger.Debug($"auto login skipped({reason}): settings={_settingsOpen} enabled={_config.AutoLogin.Enabled} failures={_loginFailures}");
+            return;
+        }
+        if (_autoLoginRunning) return;   // SPA 场景 HistoryChanged 可能密集触发
+        _autoLoginRunning = true;
         try
         {
             var user = CredentialCrypto.Decrypt(_config.AutoLogin.Credentials.Username);
             var pass = CredentialCrypto.Decrypt(_config.AutoLogin.Credentials.Password);
-            if (string.IsNullOrEmpty(user)) return;
+            if (string.IsNullOrEmpty(user))
+            {
+                Logger.Warning("auto login skipped: credentials empty or decrypt failed");
+                return;
+            }
+            Logger.Debug($"auto login run ({reason})");
 
             var login = new AutoLogin(_web, _config.AutoLogin);
             var result = await login.RunAsync(user, pass);
@@ -473,11 +497,11 @@ public sealed class MainForm : Form, IProHost
             {
                 case "success":
                     _loginFailures = 0;
-                    Logger.Info("auto login success");
+                    Logger.Info($"auto login success ({reason})");
                     break;
                 case "failed":
                     _loginFailures++;
-                    Logger.Warning($"auto login failed ({_loginFailures}/3)");
+                    Logger.Warning($"auto login failed ({_loginFailures}/3, {reason})");
                     if (_loginFailures >= 3)
                     {
                         Logger.Error("auto login paused after 3 consecutive failures");
@@ -486,7 +510,8 @@ public sealed class MainForm : Form, IProHost
                     }
                     break;
                 case "notfound":
-                    break; // 非登录页，正常情况
+                    Logger.Debug($"auto login: no form detected ({reason})");
+                    break;
                 default:
                     Logger.Warning($"auto login result: {result}");
                     break;
@@ -495,6 +520,10 @@ public sealed class MainForm : Form, IProHost
         catch (Exception ex)
         {
             Logger.Error("auto login error", ex);
+        }
+        finally
+        {
+            _autoLoginRunning = false;
         }
     }
 

@@ -30,6 +30,8 @@ public sealed class AutoLogin
                 using var doc = JsonDocument.Parse(e.WebMessageAsJson);
                 if (doc.RootElement.GetProperty("type").GetString() == "loginResult")
                     tcs.TrySetResult(doc.RootElement.GetProperty("result").GetString() ?? "unknown");
+                else if (doc.RootElement.GetProperty("type").GetString() == "loginAttempt")
+                    Logger.Info($"auto login form detected (heuristic={doc.RootElement.GetProperty("heuristic")}), submitting");
             }
             catch { /* 非 JSON 消息忽略 */ }
         };

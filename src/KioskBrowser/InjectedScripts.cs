@@ -41,6 +41,7 @@ public static class InjectedScripts
 
     /// <summary>
     /// 模拟登录：轮询等待表单出现 → 填充凭据（触发 input/change，兼容 React/Vue）→ 提交 → 验证。
+    /// 选择器找不到时走启发式兜底（password 框定位用户名框/登录按钮，覆盖 element-ui 等无 id 表单）。
     /// 结果通过 postMessage {type:'loginResult', result:'success'|'failed'|'notfound'} 回报。
     /// </summary>
     public static string AutoLogin(AutoLoginConfig cfg, string username, string password) => @"
@@ -56,6 +57,35 @@ public static class InjectedScripts
   };
   function post(o){ try{ window.chrome.webview.postMessage(o); }catch(e){} }
   function find(sel){ try{ return sel ? document.querySelector(sel) : null; }catch(e){ return null; } }
+  function visible(el){ return el && el.offsetParent !== null; }
+  // ---- 启发式兜底（配置选择器未命中时）----
+  function heurPass(){
+    var p = document.querySelector('input[type=password]');
+    return visible(p) ? p : null;
+  }
+  function heurUser(p){
+    var scope = (p && p.form) ? p.form : document;
+    var cands = scope.querySelectorAll(
+      'input:not([type=hidden]):not([type=password]):not([type=checkbox])' +
+      ':not([type=radio]):not([type=submit]):not([type=button]):not([type=file])');
+    for (var i = 0; i < cands.length; i++) {
+      var el = cands[i], ty = (el.type || 'text').toLowerCase();
+      if (['text','email','tel','number','search'].indexOf(ty) >= 0
+          && visible(el) && !el.readOnly && !el.disabled) return el;
+    }
+    return null;
+  }
+  function heurBtn(p){
+    var scope = (p && p.form) ? p.form : document;
+    var btns = scope.querySelectorAll('button, input[type=submit], a.btn, .el-button, [role=button]');
+    var keys = ['登录','登 录','登陆','登 陆','sign in','log in','login'];
+    for (var i = 0; i < btns.length; i++) {
+      var t = ((btns[i].innerText || btns[i].value || '') + '').trim().toLowerCase();
+      if (!t) continue;
+      for (var k = 0; k < keys.length; k++) if (t.indexOf(keys[k]) >= 0) return btns[i];
+    }
+    return null;
+  }
   function setVal(el, v){
     el.focus();
     var proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype
@@ -67,20 +97,22 @@ public static class InjectedScripts
   }
   var waited = 0;
   var timer = setInterval(function(){
-    var u = find(cfg.userSel), p = find(cfg.passSel);
+    var p = find(cfg.passSel) || heurPass();
+    var u = p ? (find(cfg.userSel) || heurUser(p)) : find(cfg.userSel);
     if (u && p) {
       clearInterval(timer);
+      post({type:'loginAttempt', heuristic: !find(cfg.passSel)});
       setVal(u, cfg.user);
       setVal(p, cfg.pass);
       setTimeout(function(){
-        var btn = find(cfg.submitSel);
+        var btn = find(cfg.submitSel) || heurBtn(p);
         if (btn) btn.click();
         else if (p.form) { if (p.form.requestSubmit) p.form.requestSubmit(); else p.form.submit(); }
         // 验证：用户名输入框消失视为登录成功
         var vwaited = 0;
         var vt = setInterval(function(){
           vwaited += 500;
-          if (!find(cfg.userSel)) { clearInterval(vt); post({type:'loginResult', result:'success'}); }
+          if (!document.contains(u)) { clearInterval(vt); post({type:'loginResult', result:'success'}); }
           else if (vwaited >= 8000) { clearInterval(vt); post({type:'loginResult', result:'failed'}); }
         }, 500);
       }, 300);

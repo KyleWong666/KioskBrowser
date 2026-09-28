@@ -50,6 +50,7 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
         var config = ConfigStore.Load();
+        Logger.MinLevel = config.DevMode ? LogLevel.Debug : LogLevel.Info;
         Application.Run(new MainForm(config));
         Logger.Info("=== KioskBrowser exited ===");
     }
