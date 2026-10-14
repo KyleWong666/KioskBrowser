@@ -183,7 +183,7 @@ public class KeyboardConfig
     public bool Enabled { get; set; } = true;
     public int HeightPercent { get; set; } = 35;
     public string Layout { get; set; } = "qwerty";
-    public bool EnableChinese { get; set; } = false;
+    public bool EnableChinese { get; set; } = true;
 
     /// <summary>启用的词库：general(通用18万词) / gov(政务) / medical(医疗) / retail(商场)。</summary>
     public List<string> Vocabularies { get; set; } = new() { "general" };

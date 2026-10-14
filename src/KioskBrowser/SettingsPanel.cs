@@ -36,6 +36,7 @@ public sealed class SettingsPanel : UserControl
     private CheckBox _chkRemote = null!;
     private TextBox _txtServerUrl = null!;
     private CheckBox _chkVocabGeneral = null!;
+    private CheckBox _chkChinese = null!;
     private CheckBox _chkVocabGov = null!;
     private CheckBox _chkVocabMedical = null!;
     private CheckBox _chkVocabRetail = null!;
@@ -184,6 +185,16 @@ public sealed class SettingsPanel : UserControl
                    "仅「中文2025」支持热词，大模型不支持词库。"
         };
         AddRowCustom(grid, "热词说明", lblHotwordNote);
+
+        // 中文输入开关（键盘上的「中/EN」切换键由此控制显隐）
+        _chkChinese = new CheckBox
+        {
+            Text = "启用中文拼音输入（键盘显示中/EN切换键）",
+            Dock = DockStyle.Fill,
+            ForeColor = FgColor,
+            Font = LabelFont
+        };
+        AddRowCustom(grid, "中文输入", _chkChinese);
 
         // 词库多选
         var vocabPanel = new FlowLayoutPanel
@@ -401,6 +412,7 @@ public sealed class SettingsPanel : UserControl
         _chkRemote.Checked = _cfg.Remote.Enabled;
         _txtServerUrl.Text = _cfg.Remote.ServerUrl;
         _chkSpeech.Checked = _cfg.Speech.Enabled;
+        _chkChinese.Checked = _cfg.Keyboard.EnableChinese;
         var modelIdx = Array.FindIndex(Voice.ModelManager.Models, m => m.Key == _cfg.Speech.ModelSize);
         _cmbModelSize.SelectedIndex = modelIdx >= 0 ? modelIdx : 0; // 默认中文2025
         UpdateModelStatus();
@@ -452,6 +464,7 @@ public sealed class SettingsPanel : UserControl
             return false;
         }
         _cfg.Speech.Enabled = _chkSpeech.Checked;
+        _cfg.Keyboard.EnableChinese = _chkChinese.Checked;
         if (_cmbModelSize.SelectedIndex >= 0)
             _cfg.Speech.ModelSize = Voice.ModelManager.Models[_cmbModelSize.SelectedIndex].Key;
 

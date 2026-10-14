@@ -35,7 +35,7 @@
     "enabled": true,
     "heightPercent": 35,
     "layout": "qwerty",
-    "enableChinese": false,
+    "enableChinese": true,
     "vocabularies": ["general"],
     "customVocabulary": ""
   },
