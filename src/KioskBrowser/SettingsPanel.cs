@@ -33,6 +33,12 @@ public sealed class SettingsPanel : UserControl
     private CheckBox _chkSpeech = null!;
     private ComboBox _cmbModelSize = null!;
     private Label _lblModelStatus = null!;
+    private ProgressBar _prgModel = null!;
+    private Button _btnDownloadModel = null!;
+    private bool _downloading;
+
+    /// <summary>模型下载完成（成功）时触发，宿主热加载语音或重启。</summary>
+    public event EventHandler? VoiceModelReady;
     private CheckBox _chkRemote = null!;
     private TextBox _txtServerUrl = null!;
     private CheckBox _chkVocabGeneral = null!;
@@ -168,12 +174,40 @@ public sealed class SettingsPanel : UserControl
 
         _lblModelStatus = new Label
         {
-            Dock = DockStyle.Fill,
+            AutoSize = true,
             ForeColor = Color.FromArgb(150, 150, 160),
             Font = LabelFont,
             TextAlign = ContentAlignment.MiddleLeft
         };
-        AddRowCustom(grid, "模型状态", _lblModelStatus);
+        _prgModel = new ProgressBar
+        {
+            Width = DpiHelper.S(180),
+            Height = DpiHelper.S(10),
+            Visible = false,
+            Margin = new Padding(DpiHelper.S(10), DpiHelper.S(12), 0, 0)
+        };
+        _btnDownloadModel = new Button
+        {
+            Text = "立即下载",
+            AutoSize = true,
+            BackColor = Color.FromArgb(70, 70, 82),
+            ForeColor = FgColor,
+            FlatStyle = FlatStyle.Flat,
+            Font = LabelFont,
+            Margin = new Padding(DpiHelper.S(10), DpiHelper.S(4), 0, 0)
+        };
+        _btnDownloadModel.Click += (s, e) => StartModelDownload();
+        var modelStatusPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            BackColor = BgColor,
+            Margin = new Padding(0)
+        };
+        modelStatusPanel.Controls.Add(_lblModelStatus);
+        modelStatusPanel.Controls.Add(_prgModel);
+        modelStatusPanel.Controls.Add(_btnDownloadModel);
+        AddRowCustom(grid, "模型状态", modelStatusPanel);
 
         var lblHotwordNote = new Label
         {
@@ -356,13 +390,63 @@ public sealed class SettingsPanel : UserControl
         if (_cmbModelSize.SelectedIndex < 0) return;
         var key = Voice.ModelManager.Models[_cmbModelSize.SelectedIndex].Key;
         var ready = Voice.ModelManager.IsReady(key);
-        _lblModelStatus.Text = ready
-            ? "已就绪"
-            : "未下载（保存并重启后自动下载，需联网一次）";
-        _lblModelStatus.ForeColor = ready
-            ? Color.FromArgb(110, 220, 140)
-            : Color.FromArgb(255, 180, 80);
+        if (!_downloading)
+        {
+            _lblModelStatus.Text = ready
+                ? "已就绪"
+                : "未下载（保存后自动下载，或点「立即下载」）";
+            _lblModelStatus.ForeColor = ready
+                ? Color.FromArgb(110, 220, 140)
+                : Color.FromArgb(255, 180, 80);
+        }
+        _btnDownloadModel.Visible = !ready;
     }
+
+    /// <summary>开始下载当前选中档位的模型（幂等，下载中忽略重复触发）。</summary>
+    public async void StartModelDownload()
+    {
+        if (_downloading || _cmbModelSize.SelectedIndex < 0) return;
+        var key = Voice.ModelManager.Models[_cmbModelSize.SelectedIndex].Key;
+        if (Voice.ModelManager.IsReady(key)) { UpdateModelStatus(); return; }
+        _downloading = true;
+        _btnDownloadModel.Enabled = false;
+        _prgModel.Visible = true;
+        _prgModel.Value = 0;
+        try
+        {
+            var ok = await Voice.ModelManager.EnsureAsync(key, (file, done, total) =>
+            {
+                if (IsDisposed) return;
+                BeginInvoke(() =>
+                {
+                    _lblModelStatus.Text = total > 0
+                        ? $"下载中 {file} {done:F0}/{total:F0}MB"
+                        : $"下载中 {file} {done:F0}MB";
+                    _lblModelStatus.ForeColor = Color.FromArgb(140, 200, 255);
+                    if (total > 0)
+                        _prgModel.Value = Math.Min(100, (int)(done * 100 / total));
+                });
+            });
+            _prgModel.Visible = false;
+            _lblModelStatus.ForeColor = ok
+                ? Color.FromArgb(110, 220, 140)
+                : Color.FromArgb(255, 120, 120);
+            _lblModelStatus.Text = ok ? "已就绪" : "下载失败（检查网络后点「立即下载」重试）";
+            if (ok)
+            {
+                _btnDownloadModel.Visible = false;
+                VoiceModelReady?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        finally
+        {
+            _downloading = false;
+            _btnDownloadModel.Enabled = true;
+        }
+    }
+
+    /// <summary>是否正在下载模型（宿主据此决定是否延迟重启）。</summary>
+    public bool IsDownloading => _downloading;
 
     private CheckBox MakeVocabCheck(string text) => new()
     {

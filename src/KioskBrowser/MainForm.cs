@@ -195,52 +195,7 @@ public sealed class MainForm : Form, IProHost
                     PinyinEngine.Instance.Configure(
                         _config.Keyboard.Vocabularies, _config.Keyboard.CustomVocabulary);
                 if (!_config.Speech.Enabled) return;
-
-                // 热词 = 领域词库 + 自定义词库（非通用词库）
-                HotwordManager.WriteHotwordsFile(PinyinEngine.Instance.BoostWords);
-
-                // 模型就绪后加载语音控制器
-                var ok = await ModelManager.EnsureAsync(_config.Speech.ModelSize,
-                    (file, done, total) => Logger.Debug(
-                        $"model {file}: {done:F1}/{(total > 0 ? total.ToString("F1") : "?")}MB"));
-                if (!ok)
-                {
-                    Logger.Error("speech model not ready (download failed)");
-                    _ = WebhookAlerter.PostAsync(_config.Watchdog.WebhookUrl,
-                        "model-download-failed", "语音模型下载失败");
-                    return;
-                }
-                try
-                {
-                    var voice = new VoiceInputController(_config.Speech);
-                    voice.StatusChanged += t => BeginInvoke(() =>
-                    {
-                        ShowCandBarAboveKeyboard();
-                        _candBar.SetStatus(t);
-                    });
-                    voice.FinalResult += t => BeginInvoke(async () =>
-                    {
-                        if (t.Length > 0)
-                        {
-                            _candBar.Visible = false;
-                            OnKeyboardKey(this, new KioskKeyEventArgs { Text = t });
-                        }
-                        else
-                        {
-                            ShowCandBarAboveKeyboard();
-                            _candBar.SetStatus("未识别到语音，请再试");
-                            await Task.Delay(1500);
-                            if (_keyboard.Composition.Length == 0)
-                                _candBar.Visible = false;
-                        }
-                    });
-                    _voice = voice;
-                    Logger.Info("voice input ready");
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error("voice init failed", ex);
-                }
+                await InitVoiceAsync();
             });
 
             // 键盘钩子只在霸屏模式下启用（普通窗口模式便于测试）
@@ -527,6 +482,64 @@ public sealed class MainForm : Form, IProHost
         }
     }
 
+    // ---------------- 语音（模型下载 + 热加载，幂等可重入） ----------------
+
+    private bool _voiceStarting;
+
+    private async Task InitVoiceAsync()
+    {
+        if (_voice != null || _voiceStarting) return;
+        _voiceStarting = true;
+        try
+        {
+            // 热词 = 领域词库 + 自定义词库（非通用词库）
+            HotwordManager.WriteHotwordsFile(PinyinEngine.Instance.BoostWords);
+
+            var ok = await ModelManager.EnsureAsync(_config.Speech.ModelSize,
+                (file, done, total) => Logger.Debug(
+                    $"model {file}: {done:F1}/{(total > 0 ? total.ToString("F1") : "?")}MB"));
+            if (!ok)
+            {
+                Logger.Error("speech model not ready (download failed)");
+                _ = WebhookAlerter.PostAsync(_config.Watchdog.WebhookUrl,
+                    "model-download-failed", "语音模型下载失败");
+                return;
+            }
+            var voice = new VoiceInputController(_config.Speech);
+            voice.StatusChanged += t => BeginInvoke(() =>
+            {
+                ShowCandBarAboveKeyboard();
+                _candBar.SetStatus(t);
+            });
+            voice.FinalResult += t => BeginInvoke(async () =>
+            {
+                if (t.Length > 0)
+                {
+                    _candBar.Visible = false;
+                    OnKeyboardKey(this, new KioskKeyEventArgs { Text = t });
+                }
+                else
+                {
+                    ShowCandBarAboveKeyboard();
+                    _candBar.SetStatus("未识别到语音，请再试");
+                    await Task.Delay(1500);
+                    if (_keyboard.Composition.Length == 0)
+                        _candBar.Visible = false;
+                }
+            });
+            _voice = voice;
+            Logger.Info("voice input ready");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("voice init failed", ex);
+        }
+        finally
+        {
+            _voiceStarting = false;
+        }
+    }
+
     // ---------------- 软键盘 ----------------
 
     private void SetKeyboardVisible(bool visible)
@@ -711,6 +724,7 @@ public sealed class MainForm : Form, IProHost
         _settings = new SettingsPanel(_config.Clone());
         _settings.SaveRestartRequested += OnSaveRestart;
         _settings.SaveOnlyRequested += OnSaveOnly;
+        _settings.VoiceModelReady += (s, e) => OnVoiceModelReady();
         _settings.CancelRequested += (s, e) => CloseSettings();
         _settings.ExitRequested += OnExitRequested;
 
@@ -752,14 +766,51 @@ public sealed class MainForm : Form, IProHost
     {
         if (_settings == null) return;
         ConfigStore.Save(CurrentPanelConfig());
+        var cfg = _settings.ExportConfig();
+        // 语音启用但模型未就绪：先下载，完成后再重启（避免重启杀掉下载）
+        if (cfg.Speech.Enabled && !ModelManager.IsReady(cfg.Speech.ModelSize))
+        {
+            Logger.Info("config saved, downloading speech model before restart");
+            _pendingRestartAfterDownload = true;
+            _settings.StartModelDownload();
+            return;
+        }
         Logger.Info("config saved, restarting");
         RestartApp();
+    }
+
+    private bool _pendingRestartAfterDownload;
+
+    /// <summary>面板模型下载完成：有挂起重启则重启，否则热加载语音（无需重启）。</summary>
+    private void OnVoiceModelReady()
+    {
+        if (_pendingRestartAfterDownload)
+        {
+            _pendingRestartAfterDownload = false;
+            _settings?.ShowMessage("模型下载完成，正在重启…");
+            Logger.Info("model ready, restarting");
+            RestartApp();
+            return;
+        }
+        if (_config.Speech.Enabled && _voice == null)
+        {
+            _settings?.ShowMessage("模型下载完成，语音已就绪（无需重启）");
+            _ = Task.Run(InitVoiceAsync);
+        }
     }
 
     private void OnSaveOnly(object? sender, EventArgs e)
     {
         if (_settings == null) return;
         ConfigStore.Save(CurrentPanelConfig());
+        var cfg = _settings.ExportConfig();
+        // 语音启用但模型未就绪：立即开始下载（面板内可见进度），完成后热加载
+        if (cfg.Speech.Enabled && !ModelManager.IsReady(cfg.Speech.ModelSize))
+        {
+            _config.Speech = cfg.Speech; // 让热加载用新配置
+            _settings.StartModelDownload();
+            return;
+        }
         _settings.ShowMessage("已保存（部分配置需重启后生效）");
     }
 
