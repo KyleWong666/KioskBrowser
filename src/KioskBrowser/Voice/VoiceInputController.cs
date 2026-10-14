@@ -27,6 +27,7 @@ public sealed class VoiceInputController : IDisposable
     private List<float>? _offlineBuf;
     private string _lastText = "";
     private DateTime _lastInterim = DateTime.MinValue;
+    private DateTime _lastAudioAt = DateTime.MinValue; // 采集队列排空判定用
 
     public bool IsActive
     {
@@ -112,16 +113,19 @@ public sealed class VoiceInputController : IDisposable
         StatusChanged?.Invoke("正在聆听，请说话…");
     }
 
-    /// <summary>松开：结束录音，出最终结果。</summary>
+    /// <summary>松开：结束录音，出最终结果（事件驱动排空，不赌固定延时）。</summary>
     public async void End()
     {
         StatusChanged?.Invoke("识别中…");
         var text = await Task.Run(async () =>
         {
-            // 松手后再录 450ms：NAudio 缓冲队列里还有 ≤300ms 未投递的语音尾巴，
-            // 立即停录会丢弃它们（表现为丢最后几个字）；宽限期同时给端点检测留静音余量。
-            // 宽限期内 OnAudio 持续喂流式管道，随后统一排空解码。
-            await Task.Delay(450);
+            // ① 等采集层排空：直到 150ms 没有新音频包（不同性能终端自适应，硬上限 2s）
+            //    固定延时的坑：慢终端缓冲没冲完照样丢字
+            var deadline = DateTime.Now.AddSeconds(2);
+            while (DateTime.Now < deadline
+                   && (DateTime.Now - _lastAudioAt).TotalMilliseconds < 150)
+                await Task.Delay(30);
+
             lock (_sync)
             {
                 try { _waveIn?.StopRecording(); _waveIn?.Dispose(); } catch { }
@@ -132,6 +136,9 @@ public sealed class VoiceInputController : IDisposable
                     if (_stream == null) return "";
                     try
                     {
+                        // ② 确定性收尾：主动补 300ms 静音再 InputFinished，
+                        //    让模型把攒着的最后几个 token 吐出来（与终端速度无关）
+                        _stream.AcceptWaveform(16000, new float[16000 / 10 * 3]);
                         _stream.InputFinished();
                         while (_online!.IsReady(_stream)) _online.Decode(_stream);
                         // 空音频等场景底层可能返回空结果，退回最后的中间结果
@@ -171,6 +178,7 @@ public sealed class VoiceInputController : IDisposable
 
     private void OnAudio(object? sender, WaveInEventArgs e)
     {
+        _lastAudioAt = DateTime.Now;
         var count = e.BytesRecorded / 2;
         var samples = new float[count];
         for (var i = 0; i < count; i++)
