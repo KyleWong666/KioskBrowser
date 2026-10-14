@@ -116,8 +116,12 @@ public sealed class VoiceInputController : IDisposable
     public async void End()
     {
         StatusChanged?.Invoke("识别中…");
-        var text = await Task.Run(() =>
+        var text = await Task.Run(async () =>
         {
+            // 松手后再录 450ms：NAudio 缓冲队列里还有 ≤300ms 未投递的语音尾巴，
+            // 立即停录会丢弃它们（表现为丢最后几个字）；宽限期同时给端点检测留静音余量。
+            // 宽限期内 OnAudio 持续喂流式管道，随后统一排空解码。
+            await Task.Delay(450);
             lock (_sync)
             {
                 try { _waveIn?.StopRecording(); _waveIn?.Dispose(); } catch { }
